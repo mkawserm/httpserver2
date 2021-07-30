@@ -155,6 +155,8 @@ func (h *HTTPServer2) Setup() error {
 		h.mHttpServerMux.HandlerFunc("PUT", "/", handler404)
 		h.mHttpServerMux.HandlerFunc("DELETE", "/", handler404)
 		h.mHttpServerMux.HandlerFunc("HEAD", "/", handler404)
+
+		h.mHttpServerMux.NotFound = http.HandlerFunc(handler404)
 	}
 
 
@@ -297,6 +299,9 @@ func (h *HTTPServer2) AddService(
 				metadata.Query[k] = v[0]
 			}
 		}
+
+		logger.L(h.ContractId()).Debug("request params",
+			zap.Any("params", metadata.Params))
 
 		if authorizationHandler != nil {
 			if !authorizationHandler(authorizationExpression, metadata) {
