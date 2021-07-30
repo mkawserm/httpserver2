@@ -5,3 +5,7 @@ run:
 
 build:
 	go build -o bin/httpserver2 main/main.go
+
+update-module:
+	go env -w GOPRIVATE=github.com/mkawserm
+	go get -v github.com/mkawserm/abesh
