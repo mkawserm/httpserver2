@@ -9,6 +9,7 @@ import (
 	"github.com/mkawserm/abesh/logger"
 	"github.com/mkawserm/abesh/model"
 	"github.com/mkawserm/abesh/registry"
+	"github.com/mkawserm/abesh/utility"
 	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
@@ -22,15 +23,6 @@ var ErrMethodNotDefined = errors.New("method not defined")
 type EventResponse struct {
 	Error error
 	Event *model.Event
-}
-
-func GetValue(headers map[string]string, key string, defaultValue string) string {
-	value, ok := headers[key]
-	if ok {
-		return value
-	}
-
-	return defaultValue
 }
 
 type HTTPServer2 struct {
@@ -81,14 +73,14 @@ func (h *HTTPServer2) SetValues(values map[string]string) error {
 		h.mPort = "8080"
 	}
 
-	requestTimeout, err := time.ParseDuration(GetValue(h.mValues, "default_request_timeout", "60s"))
+	requestTimeout, err := time.ParseDuration(utility.GetValue(h.mValues, "default_request_timeout", "60s"))
 	if err != nil {
 		return err
 	}
 
 	h.mRequestTimeout = requestTimeout
 
-	default404Handler := GetValue(h.mValues, "default_404_handler_enabled", "true")
+	default404Handler := utility.GetValue(h.mValues, "default_404_handler_enabled", "true")
 
 	if default404Handler == "true" {
 		h.mDefault404HandlerEnabled = true
@@ -96,7 +88,7 @@ func (h *HTTPServer2) SetValues(values map[string]string) error {
 		h.mDefault404HandlerEnabled = false
 	}
 
-	handleMethodNotAllowed := GetValue(h.mValues, "handle_method_not_allowed", "false")
+	handleMethodNotAllowed := utility.GetValue(h.mValues, "handle_method_not_allowed", "false")
 
 	if handleMethodNotAllowed == "false" {
 		h.mHandleMethodNotAllowed = false
@@ -232,9 +224,9 @@ func (h *HTTPServer2) s403m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
 	writer.WriteHeader(http.StatusForbidden)
-	if _, err := writer.Write([]byte(GetValue(h.mValues, "s403m", "403 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s403m", "403 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -250,9 +242,9 @@ func (h *HTTPServer2) s404m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
 	writer.WriteHeader(http.StatusNotFound)
-	if _, err := writer.Write([]byte(GetValue(h.mValues, "s404m", "404 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s404m", "404 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -268,9 +260,9 @@ func (h *HTTPServer2) s405m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
 	writer.WriteHeader(http.StatusMethodNotAllowed)
-	if _, err := writer.Write([]byte(GetValue(h.mValues, "s405m", "405 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s405m", "405 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -286,9 +278,9 @@ func (h *HTTPServer2) s408m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
 	writer.WriteHeader(http.StatusRequestTimeout)
-	if _, err := writer.Write([]byte(GetValue(h.mValues, "s408m", "408 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s408m", "408 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -304,10 +296,10 @@ func (h *HTTPServer2) s499m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
 	writer.WriteHeader(499)
 
-	if _, err := writer.Write([]byte(GetValue(h.mValues, "s499m", "499 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s499m", "499 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -323,9 +315,9 @@ func (h *HTTPServer2) s500m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
 	writer.WriteHeader(http.StatusInternalServerError)
-	if _, err := writer.Write([]byte(GetValue(h.mValues, "s500m", "500 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s500m", "500 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -393,7 +385,7 @@ func (h *HTTPServer2) AddService(
 		metadata.Headers = make(map[string]string)
 		metadata.Query = make(map[string]string)
 		metadata.Params = make(map[string]string)
-
+		metadata.ContractIdList = append(metadata.ContractIdList, h.ContractId())
 		for _, v := range params {
 			metadata.Params[v.Key] = v.Value
 		}
@@ -428,7 +420,7 @@ func (h *HTTPServer2) AddService(
 
 		inputEvent := &model.Event{
 			Metadata: metadata,
-			TypeUrl:  GetValue(headers, "content-type", "application/text"),
+			TypeUrl:  utility.GetValue(headers, "content-type", "application/text"),
 			Value:    data,
 		}
 
