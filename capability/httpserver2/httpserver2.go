@@ -116,6 +116,36 @@ func (h *HTTPServer2) GetEventTransmitter() iface.IEventTransmitter {
 	return h.mEventTransmitter
 }
 
+func (h *HTTPServer2) TransmitInputEvent(contractId string, inputEvent *model.Event) {
+	if h.GetEventTransmitter() != nil {
+		go func() {
+
+			err := h.GetEventTransmitter().TransmitInputEvent(contractId, inputEvent)
+			if err != nil {
+				logger.S(h.ContractId()).Error(err.Error(),
+					zap.String("version", h.Version()),
+					zap.String("name", h.Name()),
+					zap.String("contract_id", h.ContractId()))
+			}
+
+		}()
+	}
+}
+
+func (h *HTTPServer2) TransmitOutputEvent(contractId string, outputEvent *model.Event) {
+	if h.GetEventTransmitter() != nil {
+		go func() {
+			err := h.GetEventTransmitter().TransmitOutputEvent(contractId, outputEvent)
+			if err != nil {
+				logger.S(h.ContractId()).Error(err.Error(),
+					zap.String("version", h.Version()),
+					zap.String("name", h.Name()),
+					zap.String("contract_id", h.ContractId()))
+			}
+		}()
+	}
+}
+
 func (h *HTTPServer2) New() iface.ICapability {
 	return &HTTPServer2{}
 }
@@ -348,17 +378,7 @@ func (h *HTTPServer2) AddService(
 		}
 
 		// transmit input event
-		go func() {
-			if h.GetEventTransmitter() != nil {
-				err = h.GetEventTransmitter().TransmitInputEvent(service.ContractId(), inputEvent)
-				if err != nil {
-					logger.S(h.ContractId()).Error(err.Error(),
-						zap.String("version", h.Version()),
-						zap.String("name", h.Name()),
-						zap.String("contract_id", h.ContractId()))
-				}
-			}
-		}()
+		h.TransmitInputEvent(service.ContractId(), inputEvent)
 
 		nCtx, cancel := context.WithTimeout(request.Context(), h.mRequestTimeout)
 		defer cancel()
@@ -446,17 +466,7 @@ func (h *HTTPServer2) AddService(
 			}
 
 			// transmit output event
-			go func() {
-				if h.GetEventTransmitter() != nil {
-					err = h.GetEventTransmitter().TransmitOutputEvent(service.ContractId(), r.Event)
-					if err != nil {
-						logger.S(h.ContractId()).Error(err.Error(),
-							zap.String("version", h.Version()),
-							zap.String("name", h.Name()),
-							zap.String("contract_id", h.ContractId()))
-					}
-				}
-			}()
+			h.TransmitOutputEvent(service.ContractId(), r.Event)
 
 			//NOTE: handle success from service
 			for k, v := range r.Event.Metadata.Headers {
