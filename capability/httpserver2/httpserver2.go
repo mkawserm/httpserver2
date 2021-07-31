@@ -38,11 +38,12 @@ type HTTPServer2 struct {
 	mPort                     string
 	mRequestTimeout           time.Duration
 	mDefault404HandlerEnabled bool
-	mHandleMethodNotAllowed bool
+	mHandleMethodNotAllowed   bool
 	mValues                   map[string]string
 
-	mHttpServer    *http.Server
-	mHttpServerMux *httprouter.Router
+	mHttpServer       *http.Server
+	mHttpServerMux    *httprouter.Router
+	mEventTransmitter iface.IEventTransmitter
 }
 
 func (h *HTTPServer2) Name() string {
@@ -103,8 +104,16 @@ func (h *HTTPServer2) SetValues(values map[string]string) error {
 		h.mHandleMethodNotAllowed = true
 	}
 
-
 	return nil
+}
+
+func (h *HTTPServer2) AddEventTransmitter(eventTransmitter iface.IEventTransmitter) error {
+	h.mEventTransmitter = eventTransmitter
+	return nil
+}
+
+func (h *HTTPServer2) GetEventTransmitter() iface.IEventTransmitter {
+	return h.mEventTransmitter
 }
 
 func (h *HTTPServer2) New() iface.ICapability {
@@ -158,7 +167,6 @@ func (h *HTTPServer2) Setup() error {
 
 		h.mHttpServerMux.NotFound = http.HandlerFunc(handler404)
 	}
-
 
 	handlerPanic := func(writer http.ResponseWriter, request *http.Request, i interface{}) {
 		logger.L(h.ContractId()).Debug("request started")
@@ -244,7 +252,6 @@ func (h *HTTPServer2) AddService(
 		var err error
 		timerStart := time.Now()
 		params := httprouter.ParamsFromContext(request.Context())
-
 
 		defer func() {
 			logger.L(h.ContractId()).Debug("request completed")
@@ -340,6 +347,19 @@ func (h *HTTPServer2) AddService(
 			Value:    data,
 		}
 
+		// transmit input event
+		go func() {
+			if h.GetEventTransmitter() != nil {
+				err = h.GetEventTransmitter().TransmitInputEvent(service.ContractId(), inputEvent)
+				if err != nil {
+					logger.S(h.ContractId()).Error(err.Error(),
+						zap.String("version", h.Version()),
+						zap.String("name", h.Name()),
+						zap.String("contract_id", h.ContractId()))
+				}
+			}
+		}()
+
 		nCtx, cancel := context.WithTimeout(request.Context(), h.mRequestTimeout)
 		defer cancel()
 
@@ -424,6 +444,19 @@ func (h *HTTPServer2) AddService(
 				}
 				return
 			}
+
+			// transmit output event
+			go func() {
+				if h.GetEventTransmitter() != nil {
+					err = h.GetEventTransmitter().TransmitOutputEvent(service.ContractId(), r.Event)
+					if err != nil {
+						logger.S(h.ContractId()).Error(err.Error(),
+							zap.String("version", h.Version()),
+							zap.String("name", h.Name()),
+							zap.String("contract_id", h.ContractId()))
+					}
+				}
+			}()
 
 			//NOTE: handle success from service
 			for k, v := range r.Event.Metadata.Headers {
