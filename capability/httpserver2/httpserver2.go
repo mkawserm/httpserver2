@@ -60,42 +60,11 @@ func (h *HTTPServer2) GetConfigMap() iface.ConfigMap {
 
 func (h *HTTPServer2) SetConfigMap(values iface.ConfigMap) error {
 	h.mValues = values
-
-	if host, ok := values["host"]; ok {
-		h.mHost = host
-	} else {
-		h.mHost = "0.0.0.0"
-	}
-
-	if port, ok := values["port"]; ok {
-		h.mPort = port
-	} else {
-		h.mPort = "8080"
-	}
-
-	requestTimeout, err := time.ParseDuration(utility.GetValue(h.mValues, "default_request_timeout", "60s"))
-	if err != nil {
-		return err
-	}
-
-	h.mRequestTimeout = requestTimeout
-
-	default404Handler := utility.GetValue(h.mValues, "default_404_handler_enabled", "true")
-
-	if default404Handler == "true" {
-		h.mDefault404HandlerEnabled = true
-	} else {
-		h.mDefault404HandlerEnabled = false
-	}
-
-	handleMethodNotAllowed := utility.GetValue(h.mValues, "handle_method_not_allowed", "false")
-
-	if handleMethodNotAllowed == "false" {
-		h.mHandleMethodNotAllowed = false
-	} else {
-		h.mHandleMethodNotAllowed = true
-	}
-
+	h.mHost = values.String("host", "0.0.0.0")
+	h.mPort = values.String("port", "8080")
+	h.mRequestTimeout = values.Duration("default_request_timeout", time.Second)
+	h.mDefault404HandlerEnabled = values.Bool("default_404_handler_enabled", true)
+	h.mHandleMethodNotAllowed = values.Bool("handle_method_not_allowed", false)
 	return nil
 }
 
@@ -224,9 +193,9 @@ func (h *HTTPServer2) s403m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", h.mValues.String("default_content_type", "application/text"))
 	writer.WriteHeader(http.StatusForbidden)
-	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s403m", "403 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(h.mValues.String("s403m", "403 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -242,9 +211,9 @@ func (h *HTTPServer2) s404m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", h.mValues.String("default_content_type", "application/text"))
 	writer.WriteHeader(http.StatusNotFound)
-	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s404m", "404 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(h.mValues.String("s404m", "404 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -260,9 +229,9 @@ func (h *HTTPServer2) s405m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", h.mValues.String("default_content_type", "application/text"))
 	writer.WriteHeader(http.StatusMethodNotAllowed)
-	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s405m", "405 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(h.mValues.String("s405m", "405 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -278,9 +247,9 @@ func (h *HTTPServer2) s408m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", h.mValues.String("default_content_type", "application/text"))
 	writer.WriteHeader(http.StatusRequestTimeout)
-	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s408m", "408 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(h.mValues.String("s408m", "408 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -296,10 +265,10 @@ func (h *HTTPServer2) s499m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", h.mValues.String("default_content_type", "application/text"))
 	writer.WriteHeader(499)
 
-	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s499m", "499 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(h.mValues.String("s499m", "499 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -315,9 +284,9 @@ func (h *HTTPServer2) s500m(writer http.ResponseWriter, errLocal error) {
 			zap.String("contract_id", h.ContractId()))
 	}
 
-	writer.Header().Add("Content-Type", utility.GetValue(h.mValues, "default_content_type", "application/text"))
+	writer.Header().Add("Content-Type", h.mValues.String("default_content_type", "application/text"))
 	writer.WriteHeader(http.StatusInternalServerError)
-	if _, err := writer.Write([]byte(utility.GetValue(h.mValues, "s500m", "500 ERROR"))); err != nil {
+	if _, err := writer.Write([]byte(h.mValues.String("s500m", "500 ERROR"))); err != nil {
 		logger.L(h.ContractId()).Error(err.Error(),
 			zap.String("version", h.Version()),
 			zap.String("name", h.Name()),
@@ -337,7 +306,7 @@ func (h *HTTPServer2) debugMessage(request *http.Request) {
 func (h *HTTPServer2) AddService(
 	authorizationHandler iface.AuthorizationHandler,
 	authorizationExpression string,
-	triggerValues map[string]string,
+	triggerValues iface.ConfigMap,
 	capabilityRegistry iface.ICapabilityRegistry,
 	service iface.IService) error {
 
