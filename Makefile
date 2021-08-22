@@ -1,4 +1,6 @@
 VERSION = "0.0.1"
+change-version:
+	@echo $(VERSION)>VERSION
 
 run:
 	go run main/main.go run --manifest example/manifest.yaml
