@@ -31,7 +31,7 @@ type HTTPServer2 struct {
 	mRequestTimeout           time.Duration
 	mDefault404HandlerEnabled bool
 	mHandleMethodNotAllowed   bool
-	mValues                   iface.ConfigMap
+	mValues                   model.ConfigMap
 
 	mHttpServer       *http.Server
 	mHttpServerMux    *httprouter.Router
@@ -43,7 +43,7 @@ func (h *HTTPServer2) Name() string {
 }
 
 func (h *HTTPServer2) Version() string {
-	return "0.5.0"
+	return "0.6.0"
 }
 
 func (h *HTTPServer2) Category() string {
@@ -54,11 +54,11 @@ func (h *HTTPServer2) ContractId() string {
 	return "abesh:httpserver2"
 }
 
-func (h *HTTPServer2) GetConfigMap() iface.ConfigMap {
+func (h *HTTPServer2) GetConfigMap() model.ConfigMap {
 	return h.mValues
 }
 
-func (h *HTTPServer2) SetConfigMap(values iface.ConfigMap) error {
+func (h *HTTPServer2) SetConfigMap(values model.ConfigMap) error {
 	h.mValues = values
 	h.mHost = values.String("host", "0.0.0.0")
 	h.mPort = values.String("port", "8080")
@@ -68,7 +68,7 @@ func (h *HTTPServer2) SetConfigMap(values iface.ConfigMap) error {
 	return nil
 }
 
-func (h *HTTPServer2) AddEventTransmitter(eventTransmitter iface.IEventTransmitter) error {
+func (h *HTTPServer2) SetEventTransmitter(eventTransmitter iface.IEventTransmitter) error {
 	h.mEventTransmitter = eventTransmitter
 	return nil
 }
@@ -304,22 +304,21 @@ func (h *HTTPServer2) debugMessage(request *http.Request) {
 }
 
 func (h *HTTPServer2) AddService(
-	authorizationHandler iface.AuthorizationHandler,
+	authorizer iface.IAuthorizer,
 	authorizationExpression string,
-	triggerValues iface.ConfigMap,
+	triggerValues model.ConfigMap,
 	service iface.IService) error {
 
 	var method string
 	var path string
-	var ok bool
 
-	if method, ok = triggerValues["method"]; !ok {
+	if method = triggerValues.String("method", ""); len(method) == 0 {
 		return ErrMethodNotDefined
 	}
 
 	method = strings.ToUpper(strings.TrimSpace(method))
 
-	if path, ok = triggerValues["path"]; !ok {
+	if path = triggerValues.String("path", ""); len(path) == 0 {
 		return ErrPathNotDefined
 	}
 
@@ -374,8 +373,8 @@ func (h *HTTPServer2) AddService(
 		logger.L(h.ContractId()).Debug("request params",
 			zap.Any("params", metadata.Params))
 
-		if authorizationHandler != nil {
-			if !authorizationHandler(authorizationExpression, metadata) {
+		if authorizer != nil {
+			if !authorizer.IsAuthorized(authorizationExpression, metadata) {
 				h.s403m(writer, nil)
 				return
 			}
