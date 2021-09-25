@@ -43,7 +43,7 @@ func (h *HTTPServer2) Name() string {
 }
 
 func (h *HTTPServer2) Version() string {
-	return "0.8.0"
+	return "0.9.0"
 }
 
 func (h *HTTPServer2) Category() string {
