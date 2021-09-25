@@ -305,7 +305,7 @@ func (h *HTTPServer2) debugMessage(request *http.Request) {
 
 func (h *HTTPServer2) AddService(
 	authorizer iface.IAuthorizer,
-	authorizationExpression string,
+	authorizerExpression string,
 	triggerValues model.ConfigMap,
 	service iface.IService) error {
 
@@ -374,7 +374,7 @@ func (h *HTTPServer2) AddService(
 			zap.Any("params", metadata.Params))
 
 		if authorizer != nil {
-			if !authorizer.IsAuthorized(authorizationExpression, metadata) {
+			if !authorizer.IsAuthorized(authorizerExpression, metadata) {
 				h.s403m(writer, nil)
 				return
 			}
