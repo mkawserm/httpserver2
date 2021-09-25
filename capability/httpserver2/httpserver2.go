@@ -39,11 +39,11 @@ type HTTPServer2 struct {
 }
 
 func (h *HTTPServer2) Name() string {
-	return "golang_http_router_server"
+	return "abesh_httpserver2"
 }
 
 func (h *HTTPServer2) Version() string {
-	return "0.7.0"
+	return "0.8.0"
 }
 
 func (h *HTTPServer2) Category() string {
