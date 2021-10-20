@@ -10,6 +10,7 @@ import (
 	"github.com/mkawserm/abesh/model"
 	"github.com/mkawserm/abesh/registry"
 	"github.com/mkawserm/abesh/utility"
+	httpServer2Constant "github.com/mkawserm/httpserver2/constant"
 	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
@@ -39,11 +40,11 @@ type HTTPServer2 struct {
 }
 
 func (h *HTTPServer2) Name() string {
-	return "abesh_httpserver2"
+	return httpServer2Constant.Name
 }
 
 func (h *HTTPServer2) Version() string {
-	return "0.10.1"
+	return httpServer2Constant.Version
 }
 
 func (h *HTTPServer2) Category() string {
@@ -51,7 +52,7 @@ func (h *HTTPServer2) Category() string {
 }
 
 func (h *HTTPServer2) ContractId() string {
-	return "abesh:httpserver2"
+	return httpServer2Constant.ContractId
 }
 
 func (h *HTTPServer2) GetConfigMap() model.ConfigMap {
