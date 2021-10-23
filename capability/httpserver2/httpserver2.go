@@ -186,6 +186,7 @@ func (h *HTTPServer2) Setup() error {
 	h.mHttpServer.Addr = h.mHost + ":" + h.mPort
 
 	if h.mDefault404HandlerEnabled {
+		logger.L(h.ContractId()).Debug("default 404 handler enabled")
 		handler404 := func(writer http.ResponseWriter, request *http.Request) {
 			h.debugMessage(request)
 			timerStart := time.Now()
@@ -198,13 +199,6 @@ func (h *HTTPServer2) Setup() error {
 			h.s404m(request, writer, nil)
 			return
 		}
-
-		h.mHttpServerMux.HandlerFunc("GET", "/", handler404)
-		h.mHttpServerMux.HandlerFunc("POST", "/", handler404)
-		h.mHttpServerMux.HandlerFunc("PUT", "/", handler404)
-		h.mHttpServerMux.HandlerFunc("DELETE", "/", handler404)
-		h.mHttpServerMux.HandlerFunc("HEAD", "/", handler404)
-
 		h.mHttpServerMux.NotFound = http.HandlerFunc(handler404)
 	}
 
