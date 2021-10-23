@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/mkawserm/abesh v0.14.1
+	github.com/mkawserm/abesh v0.15.0
 	go.uber.org/zap v1.19.1
 )
 
