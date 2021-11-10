@@ -2,6 +2,7 @@ package httpserver2
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
 	"github.com/julienschmidt/httprouter"
@@ -15,6 +16,7 @@ import (
 	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -35,6 +37,10 @@ type HTTPServer2 struct {
 	mCertFile string
 	mKeyFile  string
 
+	mStaticDir  string
+	mStaticPath string
+	mHealthPath string
+
 	mRequestTimeout           time.Duration
 	mDefault404HandlerEnabled bool
 	mHandleMethodNotAllowed   bool
@@ -45,6 +51,8 @@ type HTTPServer2 struct {
 	mEventTransmitter iface.IEventTransmitter
 
 	mDefaultContentType string
+
+	mEmbeddedStaticFSMap map[string]embed.FS
 
 	d401m string
 	d403m string
@@ -95,6 +103,14 @@ func (h *HTTPServer2) SetConfigMap(values model.ConfigMap) error {
 	h.mCertFile = values.String("cert_file", "")
 	h.mKeyFile = values.String("key_file", "")
 
+	h.mStaticDir = values.String("static_dir", "")
+	h.mStaticPath = values.String("static_path", "/static/")
+	h.mHealthPath = values.String("health_path", "")
+
+	if !strings.HasSuffix(h.mStaticPath, "/") && len(h.mStaticPath) > 0 {
+		h.mStaticPath = h.mStaticPath + "/"
+	}
+
 	h.mRequestTimeout = values.Duration("default_request_timeout", time.Second)
 
 	h.mDefault404HandlerEnabled = values.Bool("default_404_handler_enabled", true)
@@ -142,6 +158,11 @@ func (h *HTTPServer2) GetEventTransmitter() iface.IEventTransmitter {
 	return h.mEventTransmitter
 }
 
+func (h *HTTPServer2) AddEmbeddedStaticFS(pattern string, fs embed.FS) {
+	// NOTE: must be called after setup otherwise panic will occur
+	h.mEmbeddedStaticFSMap[pattern] = fs
+}
+
 func (h *HTTPServer2) TransmitInputEvent(contractId string, inputEvent *model.Event) {
 	if h.GetEventTransmitter() != nil {
 		go func() {
@@ -176,10 +197,40 @@ func (h *HTTPServer2) New() iface.ICapability {
 	return &HTTPServer2{}
 }
 
+func (h *HTTPServer2) AddHandlerFunc(method string, pattern string, handler http.HandlerFunc) {
+	h.mHttpServerMux.HandlerFunc(method, pattern, handler)
+}
+
+func (h *HTTPServer2) AddHandler(method string, pattern string, handler httprouter.Handle) {
+	h.mHttpServerMux.Handle(method, pattern, handler)
+}
+
+func (h *HTTPServer2) ServeFiles(path string, prefix string, root http.FileSystem) {
+	if len(path) < 10 || path[len(path)-10:] != "/*filepath" {
+		panic("path must end with /*filepath in path '" + path + "'")
+	}
+
+	fileServer := http.FileServer(root)
+	h.mHttpServerMux.GET(path, func(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+		if len(prefix) != 0 {
+			if strings.HasSuffix(prefix, "/") {
+				req.URL.Path = prefix + ps.ByName("filepath")
+			} else {
+				req.URL.Path = prefix + "/" + ps.ByName("filepath")
+			}
+		} else {
+			req.URL.Path = ps.ByName("filepath")
+		}
+
+		fileServer.ServeHTTP(w, req)
+	})
+}
+
 func (h *HTTPServer2) Setup() error {
 	h.mHttpServer = new(http.Server)
 	h.mHttpServerMux = httprouter.New()
 	h.mHttpServerMux.HandleMethodNotAllowed = h.mHandleMethodNotAllowed
+	h.mEmbeddedStaticFSMap = make(map[string]embed.FS)
 
 	// setup server details
 	h.mHttpServer.Handler = h.mHttpServerMux
@@ -220,6 +271,30 @@ func (h *HTTPServer2) Setup() error {
 
 	h.mHttpServerMux.PanicHandler = handlerPanic
 
+	// register data path
+	if len(h.mStaticDir) != 0 {
+		fi, e := os.Stat(h.mStaticDir)
+
+		if e != nil {
+			logger.L(h.ContractId()).Error(e.Error())
+		} else {
+			if fi.IsDir() {
+				logger.L(h.ContractId()).Debug("data path", zap.String("static_path", h.mStaticPath))
+				h.mHttpServerMux.ServeFiles(h.mStaticPath+"*filepath", http.Dir(h.mStaticDir))
+			} else {
+				logger.L(h.ContractId()).Error("provided static_dir in the manifest conf is not directory")
+			}
+		}
+	}
+
+	// register health path
+	if len(h.mHealthPath) != 0 {
+		h.mHttpServerMux.HandlerFunc("GET", h.mHealthPath, func(writer http.ResponseWriter, _ *http.Request) {
+			writer.WriteHeader(http.StatusOK)
+			logger.L(h.ContractId()).Info("HEALTH OK")
+		})
+	}
+
 	logger.L(h.ContractId()).Info("http server setup complete",
 		zap.String("host", h.mHost),
 		zap.String("port", h.mPort))
@@ -228,6 +303,15 @@ func (h *HTTPServer2) Setup() error {
 }
 
 func (h *HTTPServer2) Start(_ context.Context) error {
+	logger.L(h.ContractId()).Debug("registering embedded data fs")
+	for p, d := range h.mEmbeddedStaticFSMap {
+		if !strings.HasSuffix(p, "/") {
+			p = p + "/"
+		}
+
+		h.ServeFiles(p+"*filepath", p[0:len(p)-1], http.FS(d))
+	}
+
 	logger.L(h.ContractId()).Info("http server started at " + h.mHttpServer.Addr)
 
 	if len(h.mCertFile) != 0 && len(h.mKeyFile) != 0 {

@@ -12,6 +12,9 @@ change-version:
 run:
 	go run main/main.go embedded run
 
+run2:
+	go run main/main.go embedded-run2
+
 build:
 	go build -o bin/httpserver2 main/main.go
 
